@@ -5,7 +5,7 @@ library(janitor)
 library(readr)
 library(readxl)
 
-#Setting up my page structure!
+#Setting up my page structure.
 
 # Only three things go here. 1. Static text like p() and h2(). 2. Inputs like text box and sliders which the user interacts with. 3. Display
 
