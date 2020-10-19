@@ -1,0 +1,44 @@
+---
+title: "gather"
+author: "Winona Guo"
+date: "10/14/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r final project}
+# Shiny Tools
+# https://shiny.rstudio.com/reference/shiny/1.5.0/
+# https://shiny.rstudio.com/tutorial/ 
+
+
+# My datasets: 
+  
+#1) Imperial Roots of Global Trade 
+# https://www.wnvermeulen.com/empires/
+# view(empires)
+
+#2) Measuring the Impacts of Colonialism: A New Data Set for the Countries of Africa and Asia
+# https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/UQZFYA
+# view(colonialism)
+
+#3) countries vulnerable to climate
+# https://www.cgdev.org/publication/dataset-vulnerability-climate-change
+# view(vulnerability)
+
+#4) per country co2 emissions
+# https://github.com/datasets/co2-fossil-by-nation
+# view(emissions)
+
+# Wyatt sent this answer key from week 3 of class which explains the below.
+# https://github.com/wyatthurt/gov-50-class-scripts/blob/main/class-2020-09-22/week_3_A.Rmd
+
+library(janitor)
+colonialism <- read_xls("shiny_app/raw_data/colonialism.xls") %>%
+  clean_names() 
+
+```
