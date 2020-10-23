@@ -6,7 +6,7 @@ library(readr)
 library(readxl)
 
 colonialism <- read_xls("raw_data/colonialism.xls") %>%
-  clean_names() 
+  clean_names()
 
 vulnerability <- read_xls("raw_data/vulnerability.xls", skip = 2) %>%
   clean_names() %>%
