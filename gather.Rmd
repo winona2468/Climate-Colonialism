@@ -1,9 +1,40 @@
 ---
-title: "gather"
+title: "Climate Colonialism: Gather.Rmd"
 author: "Winona Guo"
 date: "10/14/2020"
 output: html_document
 ---
+
+These are my datasets:
+  
+1) Colonial History Dataset
+https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/5EMETG
+
+2) Measuring the Impacts of Colonialism: A New Data Set for the Countries of Africa and Asia
+https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/UQZFYA
+
+3) Countries Vulnerable to the Climate
+https://www.cgdev.org/publication/dataset-vulnerability-climate-change
+
+4) C02 Emissions Per Country
+https://github.com/datasets/co2-fossil-by-nation
+
+Planning out my sitemap:
+
+1) The Challenge
+2) History of Empire
+3) Emissions vs. Effects
+4) Model
+5) About
+
+Below are resources that were helpful to reference as I made this project:
+
+https://shiny.rstudio.com/reference/shiny/1.5.0/
+https://shiny.rstudio.com/tutorial/
+https://github.com/wyatthurt/gov-50-class-scripts/blob/main/class-2020-09-22/week_3_A.Rmd
+https://rdrr.io/cran/maptools/man/wrld_simpl.html
+https://www.davidkane.info/files/final_projects.html
+https://github.com/wyatthurt/transboundary-water-conflict/tree/master/shiny_app
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -12,63 +43,69 @@ library(shiny)
 library(shinythemes)
 library(tidyverse)
 library(janitor)
+
+# Janitor is used to the clean the names within my data.
+
 library(readr)
 library(readxl)
+library(leaflet)
+library(maptools)
+library(rgdal)
+library(dplyr)
+library(tidymodels)
+library(rstanarm)
 
 ```
 
-
-```{r final project}
-# Shiny Tools
-# https://shiny.rstudio.com/reference/shiny/1.5.0/
-# https://shiny.rstudio.com/tutorial/ 
-
-
-# My datasets: 
-  
-#1) Imperial Roots of Global Trade 
-# https://www.wnvermeulen.com/empires/
-# view(empires)
-
-#2) Measuring the Impacts of Colonialism: A New Data Set for the Countries of Africa and Asia
-# https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/UQZFYA
-# view(colonialism)
-
-#3) countries vulnerable to climate
-# https://www.cgdev.org/publication/dataset-vulnerability-climate-change
-#view(vulnerability)
-
-#4) per country co2 emissions
-# https://github.com/datasets/co2-fossil-by-nation
-#view(emissions)
-
-# Wyatt sent this answer key from week 3 of class which explains the below.
-# https://github.com/wyatthurt/gov-50-class-scripts/blob/main/class-2020-09-22/week_3_A.Rmd
-
+```{r Loading Data}
 
 colonialism <- read_xls("shiny_app/raw_data/colonialism.xls") %>%
   clean_names() 
 
-vulnerability <- read_xls("shiny_app/raw_data/vulnerability.xls", skip = 2) %>%
+climaterisk <- read_xls("shiny_app/raw_data/vulnerability.xls", skip = 2) %>%
   clean_names() %>%
   rename(vulnerable = climate_vulnerability_cv_cdi_adj_for_income_regulation)
-view(vulnerability)
 
+countries <- read_xls("shiny_app/raw_data/countries_files/icowcol.xls") %>%
+  mutate(date = str_sub(Indep, 1, 4)) %>%
+  mutate(twenty = ifelse(date >= 1900, "Colonized", "Independent"))
 
 ```
 
-``` {r Creating plots for pg 2}
+```{r Tab 1 Plot}
+
+fit_mod <- inner_join(countries, climaterisk, by = c("Name" = "country")) %>%
+ group_by(twenty) %>%
+ mutate(avg_risk = mean(vulnerable)) 
+
+# Count(twenty) yields 118 colonized and 43 independent countries.
+
+bargraph <- fit_mod %>%
+ ggplot(mapping = aes(x = twenty, y = avg_risk)) + 
+ geom_col(fill = "darkgreen") +
+ labs(title = "Climate Risk Today for Independent vs. Colonized Countries in Total", 
+      subtitle = "At The Turn of the 20th Century", 
+      x = "Countries",
+      y = "Average Climate Vulnerability Today") +
+ theme_classic()
+
+```
+
+``` {r Tab 2 Plots}
+
+# PLOT BY NUMBER OF YEARS COLONIZED (in africa and asia) (removing two outliers)
 
 q1 <- colonialism %>%
   select(country_name, colyears) 
-    
-q2 <- vulnerability %>%
-  select(country, vulnerable, world_sub_region)
+
+q2 <- climaterisk %>%
+  select(country, vulnerable, world_sub_region) %>%
+  subset(country != "Somalia") %>%
+  subset(country != "Burundi")
 
 q3 <- inner_join(q1, q2, by = c("country_name" = "country")) 
 
-
-graph1 <- q3 %>%
+colonize <- q3 %>%
   ggplot(aes(x = colyears, y = vulnerable, color = world_sub_region)) +
   geom_point(alpha = 0.7) +
   labs(title = "Countries by Years Colonized and Vulnerability to Climate Risk",
@@ -79,11 +116,92 @@ graph1 <- q3 %>%
        and its current vulnerability to climate risk.") +
   theme_bw() + 
   scale_color_discrete("World Region")
-  
 
-graph1
+# PLOT OF TYPE OF INDEPENCE (x) ON CLIMATE RISK (y)
 
-# Other code—delete at end.
-# filter(country_name %in% c("Somalia", "China", "Angola")) 
+types <- fit_mod %>%
+      ggplot(aes(x = Type, y = vulnerable)) +
+      geom_col(fill = "orange") +
+      labs(title = "The Effect of Different Types of Colonialism on Climate Risk",
+           y = "Climate Risk",
+           subtitle = "Key: 1 = Formation, 2 = Decolonization, 3 = Secession, 4 = Partition",
+           caption = "This graph shows that decolonialization and occuption by a foreign power 
+           has a significantly greater effect on risk than histories of secession or partition.") 
+
+```
+
+```{r Tab 3 Leaflet}
+
+# Modifying Polygons: world countries from the maptools package.
+
+data(wrld_simpl)
+
+saveRDS(wrld_simpl, "shiny_app/joined.rds")
+
+wrldsimplmod <- readRDS("shiny_app/joined.RDS")
+
+# Merging with my data on climate risk.
+
+wrldsimplmod@data <-
+   left_join(wrld_simpl@data, fit_mod, by = c("NAME" = "Name")) 
     
 ```
+
+```{r Tab 4 Model}
+
+# Is there a predictive relationship between CO2 emissions and climate risk?
+
+# Trying to produce total emissions for each country between 1751 and 2014. 
+
+emissions <- read_csv("shiny_app/raw_data/emissions.csv", 
+                      col_types = cols(
+                       Year = col_double(),
+                       Country = col_character(),
+                       Total = col_double(),
+                       `Solid Fuel` = col_double(),
+                       `Liquid Fuel` = col_double(),
+                       `Gas Fuel` = col_double(),
+                        Cement = col_double(),
+                       `Gas Flaring` = col_double(),
+                      `Per Capita` = col_double(),
+                      `Bunker fuels (Not in Total)` = col_double()
+                      )) %>%
+   group_by(Country) %>%
+   mutate(sum = sum(Total)) %>%
+   slice(1) %>%
+   select(Country, sum) %>%
+   mutate(Country = str_to_lower(Country)) 
+
+risk_join <- climaterisk %>%
+   mutate(Country = str_to_lower(country)) 
+
+model <- inner_join(emissions, risk_join, by = "Country") 
+
+reg <- stan_glm(formula = vulnerable ~ sum,
+                data = model, 
+                refresh = 0, 
+                seed = 8) 
+
+print(reg, digits = 6)
+
+```
+
+* Write the math for this model. I am considering risk as a function of emissions. How much should/do emissions affect risk?
+
+$$ reg_{risk} = \beta_0 + \beta_1x_{emissions, i} + \epsilon $$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
