@@ -23,6 +23,7 @@ shinyUI(
                    p(),
                    h4("The empire of the climate is the first, the most powerful of all empires —Montesquieu"),
                    h2(" "),
+                   
                mainPanel(
                      plotOutput("countriesPlot"),
                      h4("Why is this the case?")
@@ -39,11 +40,11 @@ shinyUI(
                    titlePanel("A Short History"),
                    
                    p(paste("Here I will include a short historical background on the history of empire, 
-                   and its relationship with climate colonialism.")),
+                   and its relationship with climate colonialism. I will also replace the third graph in the list.")),
                    
                    sidebarLayout(
                      
-                     # Left panel. Adding more options soon.
+                     # Left panel. 
                      
                      sidebarPanel(
                        
@@ -51,14 +52,14 @@ shinyUI(
                        
                        selectInput("selected_characteristic", h3("Characteristics"),
                                    choices = list("Years Colonized",
-                                                  "Type of Colonization")),
+                                                  "Colonization Type",
+                                                  "Different Environmental Risks")),
                      ),
                      
                     # Right side plot. 
                     
                       mainPanel(
-                         plotOutput("colonialPlot"),
-                         textOutput("message")
+                         plotOutput("colonialPlot")
                       )
                      )
                    
@@ -117,7 +118,19 @@ shinyUI(
 
                 tabPanel(
                   "Model",
-                  h4("Introduce my model.")
+                  h3("Is there a predictive relationship between a country's CO2 emissions and their climate risk?"),
+                  h4("First, I have found the sum of CO2 emissions between 1751 and 2014 for various countries. 
+                     Then, I ran climate risk on the sum of these emissions.
+                     The graph between these two variables does not produce a clear regression line, 
+                     though the general trend seems to be that countries with few emissions also have high climate risk."),
+                  
+                  mainPanel(
+                    plotOutput("emissionsPlot"),
+                    h4("To put together my model, I also controlled for three variables: income per capita, area, and governance quality. 
+                     This data was included inside the climate risk dataset."),
+                    tableOutput("modelPlot"),
+                    h4("Governance is the only variable which seems to have a substantive effect on climate risk.")
+                  ) 
                 ),
 
 

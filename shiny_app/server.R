@@ -11,24 +11,46 @@ library(maptools)
 library(rgdal)
 library(dplyr)
 library(RColorBrewer)
+library(tidymodels)
+library(rstanarm)
+library(broom.mixed)
 
 colonialism <- read_xls("raw_data/colonialism.xls") %>%
-  clean_names()
+  clean_names() 
 
 climaterisk <- read_xls("raw_data/vulnerability.xls", skip = 2) %>%
   clean_names() %>%
   rename(vulnerable = climate_vulnerability_cv_cdi_adj_for_income_regulation) %>%
-  select(country, vulnerable, world_sub_region)
+  rename(governance = kkm_regulatory_quality_score_2008) %>%
+  rename(income = income_per_capita_us_ppp_2008) %>%
+  rename(area = area_sq_km) %>%
+  mutate(country = str_to_title(country)) %>%
+  select(country, vulnerable, income, governance, area, world_sub_region) %>%
+  mutate(country = recode(country, 'Korea, Rep.' = 'South Korea',
+                          'Korea, Dem. Rep.' = 'North Korea',
+                          'Taiwan (China)' = 'Taiwan',
+                          'Slovak Republic' = 'Slovakia',
+                          'Iran, Islamic Rep.' = 'Iran'))
 
 countries <- read_xls("raw_data/countries_files/icowcol.xls") %>%
   mutate(date = str_sub(Indep, 1, 4)) %>%
-  mutate(twenty = ifelse(date >= 1900, "Colonized", "Independent"))
-
-wrldsimplmod <- readRDS("joined.RDS")
-
-fit_mod <- inner_join(countries, climaterisk, by = c("Name" = "country")) %>%
-  group_by(twenty) %>%
-  mutate(avg_risk = mean(vulnerable)) 
+  mutate(twenty = ifelse(date >= 1900, "Colonized", "Independent")) %>%
+  mutate(Name = recode(Name, 'United States of America' = 'United States',
+                       'Bahamas' = 'Bahamas, The',
+                       'Trinidad and Tobago' = 'Trinidad And Tobago',
+                       'Tunisia (postcolonial)' = 'Tunisia',
+                       'Antigua and Barbuda' = 'Antigua And Barbuda',
+                       'St. Kitts and Nevis' = 'St. Kitts And Nevis',
+                       'St. Vincent and the Grenadines' ='St. Vincent And The Grenadines',
+                       'Venezuela' = 'Venezuela, Rb',
+                       'Prussia / Germany' = 'Germany',
+                       'Fed. States of Micronesia' = 'Micronesia, Fed. Sts.',
+                       'Brunei' = 'Brunei Darussalam',
+                       'Kyrgyzstan' = 'Kyrgyz Republic',
+                       'Austria-Hungary' = 'Austria',
+                       'Laos' = 'Lao Pdr',
+                       'Egypt (poat-colonial)' = 'Egypt, Arab Rep.',
+                       'Yemen' = 'Yemen, Rep.'))
 
 emissions <- read_csv("raw_data/emissions.csv", 
                       col_types = cols(
@@ -44,9 +66,26 @@ emissions <- read_csv("raw_data/emissions.csv",
                         `Bunker fuels (Not in Total)` = col_double()
                       )) %>%
   group_by(Country) %>%
-  summarize(sum = sum(Total), .groups = "drop") %>%
+  mutate(sum = sum(Total)) %>%
+  slice(1) %>%
   select(Country, sum) %>%
-  mutate(Country = str_to_title(Country)) 
+  mutate(Country = str_to_title(Country))
+
+# The below joins the colonialism data with climate risk data. 
+
+fit_mod <- inner_join(countries, climaterisk, by = c("Name" = "country")) %>%
+  group_by(twenty) %>%
+  mutate(avg_risk = mean(vulnerable)) 
+
+wrldsimplmod <- readRDS("joined.rds")
+
+model <- inner_join(emissions, climaterisk, by = c("Country" = "country"))
+
+reg <- stan_glm(formula = vulnerable ~ sum + income + area + governance,
+                data = model, 
+                refresh = 0, 
+                seed = 8) %>%
+  tidy()
 
 
 #### SETTING UP SHINY SERVER ####
@@ -57,16 +96,20 @@ shinyServer(function(input, output) {
 
   output$countriesPlot <- renderPlot({
     
-    bargraph <- fit_mod %>%
+    bar_graph <- fit_mod %>%
+      select(twenty, avg_risk) %>%
+      slice(1) %>%
       ggplot(mapping = aes(x = twenty, y = avg_risk)) + 
-      geom_col(fill = "darkseagreen4") +
-      theme_bw() +
-      labs(title = "Climate Risk Today for Countries Independent vs. Colonized At The Turn of the 20th Century",
-           x = "Countries (Until Decolonization Post-1900)",
-           y = "Average Climate Vulnerability Today") +
+      geom_col(fill = "darkgreen") +
+      labs(title = "Climate Risk Today for Countries Colonized vs. Independent", 
+           subtitle = "At The Turn of the 20th Century", 
+           x = "Countries' Colonial Status in 1900",
+           y = "Average Climate Vulnerability Today",
+           caption = "The average climate risk among 131 colonized countries is 4.58, 
+      and the average for 45 independent countries is 1.52.") +
       theme_classic()
     
-    bargraph
+    bar_graph
     
   })
   
@@ -74,7 +117,7 @@ shinyServer(function(input, output) {
   
     output$colonialPlot <- renderPlot({
     
-      if (input$selected_characteristic == "Years Colonized") ({
+      if (input$selected_characteristic == "Years Colonized") {
         
         #display first line plot
         
@@ -101,31 +144,52 @@ shinyServer(function(input, output) {
         scale_color_discrete("World Region")
       
       colonize
-      })
+      }
       
     
-    else(input$selected_characteristic == "Type of Colonization") ({
-      
-    types <- fit_mod %>%
-      ggplot(aes(x = Type, y = vulnerable)) +
-      geom_col(fill = "orange") +
-      labs(title = "The Effect of Different Types of Colonialism on Climate Risk",
-           y = "Climate Risk",
-           subtitle = "Key: 1 = Formation, 2 = Decolonization, 3 = Secession, 4 = Partition",
-           caption = "This graph shows that decolonialization and occuption by a foreign power 
+    else {
+      if(input$selected_characteristic == "Colonization Type") {
+        
+       
+        types <- fit_mod %>%
+          ggplot(aes(x = Type, y = vulnerable)) +
+          geom_col(fill = "orange") +
+          labs(title = "The Effect of Different Types of Colonialism on Climate Risk",
+               y = "Climate Risk",
+               subtitle = "Key: 1 = Formation, 2 = Decolonization, 3 = Secession, 4 = Partition",
+               caption = "This graph shows that decolonialization and occuption by a foreign power 
            has a significantly greater effect on risk than histories of secession or partition.") 
-    
-    types
-    
-    })
+        
+        types
+        
+      }
+      
+      else {
+        
+        types <- fit_mod %>%
+          ggplot(aes(x = Type, y = vulnerable)) +
+          geom_col(fill = "orange") +
+          labs(title = "The Effect of Different Types of Colonialism on Climate Risk",
+               y = "Climate Risk",
+               subtitle = "Key: 1 = Formation, 2 = Decolonization, 3 = Secession, 4 = Partition",
+               caption = "This graph shows that decolonialization and occuption by a foreign power 
+           has a significantly greater effect on risk than histories of secession or partition.") 
+        
+        types
+        
+      }
+      
+      
+    }
+      
+      
     
   })
     
-    output$message <- renderText({
-      paste0("More information: ", 
-             input$selected_characteristic, "!")
-    })
     
+    
+    
+
 #### THIRD PAGE ####
     
 # PART ONE: CLIMATE RISK MAP
@@ -135,12 +199,11 @@ shinyServer(function(input, output) {
     output$risk <- renderDataTable({
       datatable(
         
-        selection <- fit_mod %>%
-          select(Name, date, twenty, vulnerable) %>%
-          rename("Start of 20th Century" = "twenty",
-                 "Year Decolonized" = "date",
+        selection <- climaterisk %>%
+          select(country, income, vulnerable) %>%
+          rename("Income Per Capita" = "income",
                  "Climate Risk" = "vulnerable",
-                 "Country" = "Name"),
+                 "Country" = "country"),
         options = list(pageLength = 10)
       )
     })
@@ -155,7 +218,7 @@ shinyServer(function(input, output) {
       bins_climaterisk <-
         colorBin(
           "Blues",
-          fit_mod$vulnerable,
+          climaterisk$vulnerable,
           9,
           pretty = FALSE,
           na.color = "#DFDFDF"
@@ -177,12 +240,12 @@ shinyServer(function(input, output) {
           smoothFactor = 0.2,
           fillOpacity = 1,
           popup = paste(
-            fit_mod$Name,
+            climaterisk$country,
             "Country <br>",
             "Climate Risk:",
-            fit_mod$vulnerable
+            climaterisk$vulnerable
           ),
-          color = ~ bins_climaterisk(fit_mod$vulnerable)
+          color = ~ bins_climaterisk(climaterisk$vulnerable)
         ) %>%
         
         # The map legend. 
@@ -190,7 +253,7 @@ shinyServer(function(input, output) {
         addLegend(
           "bottomright",
           pal = bins_climaterisk,
-          values = fit_mod$vulnerable,
+          values = climaterisk$vulnerable,
           title = "Climate Risk",
           opacity = 1,
           labFormat = labelFormat(digits = 0)
@@ -203,7 +266,8 @@ shinyServer(function(input, output) {
     
     output$emissions <- renderDataTable({
       datatable(
-        emissions,
+        emissions %>%
+          rename("Total Emissions" = "sum"),
         options = list(pageLength = 10)
       )
     })
@@ -234,7 +298,7 @@ shinyServer(function(input, output) {
         # Adding polygons.
         
         addPolygons(
-          data = wrldsimplmod,
+          data = wrldsimplmod,           # THANK YOU, WYATT!!!!!!!!
           stroke = FALSE,
           smoothFactor = 0.2,
           fillOpacity = 1,
@@ -262,6 +326,29 @@ shinyServer(function(input, output) {
 #### FOURTH PAGE ####
 
 # Running my model.
+    
+    # Is there a predictive relationship between CO2 emissions and climate risk?
+    
+    # Trying to produce total emissions for each country between 1751 and 2014. 
+    
+    output$emissionsPlot <- renderPlot({
+          
+          emissions_risk <- model %>%
+            ggplot(aes(x = sum, y = vulnerable)) +
+            geom_line()
+          
+          emissions_risk
+      
+    })
+    
+    
+    # I am also controlling for three variables from each country here: income per capita, area, and governance quality. This data was included inside the climate risk dataset.
+    
+    output$modelPlot <- renderTable({
+      
+      reg
+      
+    })
     
 #### FIFTH PAGE ####
     
