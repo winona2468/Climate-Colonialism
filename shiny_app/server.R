@@ -218,7 +218,7 @@ shinyServer(function(input, output) {
       bins_climaterisk <-
         colorBin(
           "Blues",
-          climaterisk$vulnerable,
+          wrldsimplmod$vulnerable,
           9,
           pretty = FALSE,
           na.color = "#DFDFDF"
@@ -226,7 +226,7 @@ shinyServer(function(input, output) {
       
       # Build map using CARTO DB Positron provider tiles. View middle of earth.
       
-      leaflet(width = "100%") %>%
+      leaflet(wrldsimplmod, width = "100%") %>%
         addProviderTiles(providers$CartoDB.Positron) %>%
         setView(lng = 0,
                 lat = 30,
@@ -235,30 +235,29 @@ shinyServer(function(input, output) {
         # Adding polygons.
         
         addPolygons(
-          data = wrldsimplmod,
           stroke = FALSE,
           smoothFactor = 0.2,
           fillOpacity = 1,
           popup = paste(
-            climaterisk$country,
+            wrldsimplmod$country,
             "Country <br>",
             "Climate Risk:",
             climaterisk$vulnerable
           ),
-          color = ~ bins_climaterisk(climaterisk$vulnerable)
+          color = ~ bins_climaterisk(wrldsimplmod$vulnerable)
         ) %>%
         
-        # The map legend. 
+        # The map legend.
         
         addLegend(
           "bottomright",
           pal = bins_climaterisk,
-          values = climaterisk$vulnerable,
+          values = wrldsimplmod$vulnerable,
           title = "Climate Risk",
           opacity = 1,
           labFormat = labelFormat(digits = 0)
         )
-    })
+    }) 
     
 # PART TWO: EMISSION MAP
     
@@ -281,7 +280,7 @@ shinyServer(function(input, output) {
       bins_emissions <-
         colorBin(
           "Reds",
-          emissions$sum,
+          wrldsimplmod$sum,
           9,
           pretty = FALSE,
           na.color = "#DFDFDF"
@@ -289,7 +288,7 @@ shinyServer(function(input, output) {
       
       # Build map using CARTO DB Positron provider tiles. View middle of earth.
       
-      leaflet(width = "100%") %>%
+      leaflet(wrldsimplmod, width = "100%") %>%
         addProviderTiles(providers$CartoDB.Positron) %>%
         setView(lng = 0,
                 lat = 30,
@@ -298,17 +297,16 @@ shinyServer(function(input, output) {
         # Adding polygons.
         
         addPolygons(
-          data = wrldsimplmod,           # THANK YOU, WYATT!!!!!!!!
           stroke = FALSE,
           smoothFactor = 0.2,
           fillOpacity = 1,
           popup = paste(
-            emissions$Country,
+            wrldsimplmod$Country,
             "Country <br>",
             "Emissions:",
             emissions$sum
           ),
-          color = ~ bins_emissions(emissions$sum)
+          color = ~ bins_emissions(wrldsimplmod$sum)
         ) %>%
         
         # The map legend. 
@@ -316,7 +314,7 @@ shinyServer(function(input, output) {
         addLegend(
           "bottomright",
           pal = bins_emissions,
-          values = emissions$sum,
+          values = wrldsimplmod$sum,
           title = "Total Emissions",
           opacity = 1,
           labFormat = labelFormat(digits = 0)

@@ -151,17 +151,17 @@ bar_graph
 
 # PLOT 1: COLONIALISM & INCOME
 
-graph onset and end of colonialism for different countries
-graph the 4 variables change over that period
-graph france vs. uk whether they have different effects on climate risk
+#graph onset and end of colonialism for different countries
+#graph the 4 variables change over that period
+#graph france vs. uk whether they have different effects on climate risk
 
 
-countries on left, geomline line segments on y from onset/end, color coded by motherland
+#countries on left, geomline line segments on y from onset/end, color coded by motherland
 
-renacohen.shinyapps.io/afta/
-  https://benalexkeen.com/creating-a-timeline-graphic-using-r-and-ggplot2/
+#renacohen.shinyapps.io/afta/
+ # https://benalexkeen.com/creating-a-timeline-graphic-using-r-and-ggplot2/
 
-look at rena's shiny app for modeling results
+#look at rena's shiny app for modeling results
 
 # PLOT 2: NUMBER OF YEARS COLONIZED (African and Asian Countries)
 
@@ -204,22 +204,22 @@ colonize <- q3 %>%
     
 
 ```
-
 ```{r Tab 3 Leaflet}
 
 # Modifying Polygons: world countries from the maptools package.
 
 data(wrld_simpl)
 
-saveRDS(wrld_simpl, "shiny_app/joined.rds")
-
-wrldsimplmod <- readRDS("shiny_app/joined.RDS")
+wrldsimplmod <- wrld_simpl
 
 # Merging with my data on climate risk.
 
 wrldsimplmod@data <-
+  
    left_join(wrld_simpl@data, fit_mod, by = c("NAME" = "Name")) 
-    
+
+saveRDS(wrldsimplmod, "joined.rds")
+
 ```
 
 ```{r Tab 4 Model}
