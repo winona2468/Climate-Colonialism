@@ -26,31 +26,90 @@ climaterisk <- read_xls("raw_data/vulnerability.xls", skip = 2) %>%
   rename(area = area_sq_km) %>%
   mutate(country = str_to_title(country)) %>%
   select(country, vulnerable, income, governance, area, world_sub_region) %>%
-  mutate(country = recode(country, 'Korea, Rep.' = 'South Korea',
-                          'Korea, Dem. Rep.' = 'North Korea',
+  mutate(country = recode(country, 'Korea, Rep.' = 'Korea, Republic of',
+                          "Korea, Dem. Rep." = "Korea, Democratic People's Republic of",
                           'Taiwan (China)' = 'Taiwan',
+                          'Antigua And Barbuda' = 'Antigua and Barbuda',
+                          'Bahamas, The' = 'Bahamas',
                           'Slovak Republic' = 'Slovakia',
-                          'Iran, Islamic Rep.' = 'Iran'))
+                          
+                          # Starting here are the ones I am renaming so that it aligns with the wrldsimplmod countries' names. 
+                          
+                          'Iran, Islamic Rep.' = 'Iran (Islamic Republic of)',
+                          'Bosnia And Herzegovina' = 'Bosnia and Herzegovina',
+                          'Myanmar' = 'Burma',
+                          'Congo, Rep.' = 'Congo',
+                          'Congo, Dem. Rep.' = 'Democratic Republic of the Congo',
+                          'Egypt, Arab Rep.' = 'Egypt',
+                          'Yemen, Rep.' = 'Yemen',
+                          'French Guians' = 'French Guiana',
+                          'Micronesia, Fed. Sts.' = 'Micronesia, Federated States of',
+                          'Gambia, The' = 'Gambia',
+                          "Cote D'ivoire" = "Cote d'Ivoire",
+                          'Kyrgyz Republic' = 'Kyrgyzstan',
+                          'Falkland Islands' = 'Falkland Islands (Malvinas)',
+                          "Lao Pdr" = "Lao People's Democratic Republic",
+                          'Libya' = 'Libyan Arab Jamahiriya',
+                          'Macedonia, Fyr' = 'The former Yugoslav Republic of Macedonia',
+                          'Hong Kong Sar, China' = 'Hong Kong',
+                          'Isle Of Man' = 'Isle of Man',
+                          'Macao Sar, China' = 'Macau',
+                          'West Bank And Gaza' = 'Palestine',
+                          
+                          # I feel somewhat like I am simplifying decades of history into one line of code!
+                          
+                          'Serbia And Montenegro' = 'Serbia',
+                          'Moldova' = 'Republic of Moldova',
+                          'Russian Federation' = 'Russia',
+                          'St. Kitts And Nevis' = 'Saint Kitts and Nevis',
+                          'St. Lucia' = 'Saint Lucia',
+                          'Trinidad And Tobago' = 'Trinidad and Tobago',
+                          'Sao Tome And Principe' = 'Sao Tome and Principe',
+                          'Tanzania' = 'United Republic of Tanzania',
+                          'St. Vincent And The Grenadines' = 'Saint Vincent and the Grenadines',
+                          'Venezuela, Rb' = 'Venezuela',
+                          'Vietnam' = 'Viet Nam',
+                          'Virgin Islands (U.s.)' = 'United States Virgin Islands',
+                          'Wallis And Futuna' = 'Wallis and Futuna Islands',
+                          'Pitcairn' = 'Pitcairn Islands',
+                          'St. Pierre And Miquelon' = 'Saint Pierre and Miquelon',
+                          'St. Helena' = 'Saint Helena',
+                          'Turks And Caicos Islands' = 'Turks and Caicos Islands',
+                          'Svalbard And Jan Mayen' = 'Svalbard')) %>%
+  mutate(vulnerable = replace(vulnerable, 188, 42.000))
+
+# BIG IMPORTANT NOTE: I replaced Somalia's 100.000 climate risk rate with 42.000
+# (near Burma's), because it is a single dramatic outlier that changes the later
+# graph. I will be sure to note this via text inside my Shiny app!
+
+# Mapping these data sets (and doing the corresponding recoding work) requires
+# navigating a lot of complex history that I'm having difficulty summarizing
+# into one number. For instance, in the countries data, we have Yemen listed as
+# being decolonized in 1990, but Yemen People’s Republic decolonized in 1967. In
+# the climate data, there is one one 'Yemen Rep.' Which name maps on to which? I
+# ended up choosing to rename Yemen Rep. as Yemen, both to match the later
+# colonization date and also to match wrldsimplmod.
 
 countries <- read_xls("raw_data/countries_files/icowcol.xls") %>%
   mutate(date = str_sub(Indep, 1, 4)) %>%
   mutate(twenty = ifelse(date >= 1900, "Colonized", "Independent")) %>%
   mutate(Name = recode(Name, 'United States of America' = 'United States',
-                       'Bahamas' = 'Bahamas, The',
-                       'Trinidad and Tobago' = 'Trinidad And Tobago',
                        'Tunisia (postcolonial)' = 'Tunisia',
-                       'Antigua and Barbuda' = 'Antigua And Barbuda',
-                       'St. Kitts and Nevis' = 'St. Kitts And Nevis',
-                       'St. Vincent and the Grenadines' ='St. Vincent And The Grenadines',
-                       'Venezuela' = 'Venezuela, Rb',
+                       'St. Kitts and Nevis' = 'Saint Kitts and Nevis',
+                       'St. Vincent and the Grenadines' ='Saint Vincent and the Grenadines',
                        'Prussia / Germany' = 'Germany',
-                       'Fed. States of Micronesia' = 'Micronesia, Fed. Sts.',
+                       'Fed. States of Micronesia' = 'Micronesia, Federated States of',
+                       'Iran' = 'Iran (Islamic Republic of)',
                        'Brunei' = 'Brunei Darussalam',
-                       'Kyrgyzstan' = 'Kyrgyz Republic',
                        'Austria-Hungary' = 'Austria',
-                       'Laos' = 'Lao Pdr',
-                       'Egypt (poat-colonial)' = 'Egypt, Arab Rep.',
-                       'Yemen' = 'Yemen, Rep.'))
+                       "Laos" = "Lao People's Democratic Republic",
+                       'Egypt (poat-colonial)' = 'Egypt',
+                       'South Korea' = 'Korea, Republic of',
+                       "Korea, Dem. Rep." = "Korea, Democratic People's Republic of",
+                       'Moldova' = 'Republic of Moldova',
+                       'Serbia / Yugoslavia' = 'Serbia',
+                       'Tanzania' = 'United Republic of Tanzania',
+                       'Vietnam' = 'Viet Nam'))
 
 emissions <- read_csv("raw_data/emissions.csv", 
                       col_types = cols(
@@ -69,7 +128,29 @@ emissions <- read_csv("raw_data/emissions.csv",
   mutate(sum = sum(Total)) %>%
   slice(1) %>%
   select(Country, sum) %>%
-  mutate(Country = str_to_title(Country))
+  mutate(Country = str_to_title(Country)) %>%
+  mutate(Country = recode(Country, "United States Of America" = "United States",
+                          "China (Mainland)" = "China",
+                          "Russian Federation" = "Russia",
+                          "Islamic Republic Of Iran" = "Iran (Islamic Republic of)",
+                          "Plurinational State Of Bolivia" = "Bolivia",
+                          "Myanmar (Formerly Burma)" = "Burma",
+                          "United Republic Of Tanzania" = "United Republic of Tanzania",
+                          "Libyan Arab Jamahiriyah" = "Libyan Arab Jamahiriya",
+                          "French West Africa" = "Western Sahara",
+                          "Cote D Ivoire" = "Cote d'Ivoire",
+                          "Republic Of Cameroon" = "Cameroon",
+                          "Democratic Republic Of The Congo (Formerly Zaire)" = "Democratic Republic of the Congo",
+                          "United Republic Of Tanzania" = "United Republic of Tanzania",
+                          "Lao People S Democratic Republic" = "Lao People's Democratic Republic",
+                          "Republic Of Korea" = "Korea, Republic of", 
+                          "Democratic People S Republic Of Korea" = "Korea, Democratic People's Republic of",
+                          "Antarctic Fisheries" = "Antarctica",
+                          "France (Including Monaco)" = "France",
+                          "Italy (Including San Marino)" = "Italy")) %>%
+  mutate(sum = ifelse(sum == 102510260, 60000000, sum))
+
+# BIG IMPORTANT NOTE AGAIN: I replaced the U.S. total emissions of 102510260, a dramatic outlier, to be 60,000,000, closer to the second largest # of 47649834 (China). 
 
 # The below joins the colonialism data with climate risk data. 
 
@@ -78,6 +159,8 @@ fit_mod <- inner_join(countries, climaterisk, by = c("Name" = "country")) %>%
   mutate(avg_risk = mean(vulnerable)) 
 
 wrldsimplmod <- readRDS("joined.rds")
+
+secondmod <- readRDS("joined2.rds")
 
 model <- inner_join(emissions, climaterisk, by = c("Country" = "country"))
 
@@ -220,6 +303,9 @@ shinyServer(function(input, output) {
           "Blues",
           wrldsimplmod$vulnerable,
           9,
+          
+          # I would like to reconfigure if Somalia (an extreme outlier) were temporarily taken out. It dramatically changes the colors on the map!
+          
           pretty = FALSE,
           na.color = "#DFDFDF"
         )
@@ -239,10 +325,10 @@ shinyServer(function(input, output) {
           smoothFactor = 0.2,
           fillOpacity = 1,
           popup = paste(
-            wrldsimplmod$country,
-            "Country <br>",
+            wrldsimplmod$NAME,
+            "<br>",
             "Climate Risk:",
-            climaterisk$vulnerable
+            wrldsimplmod$vulnerable
           ),
           color = ~ bins_climaterisk(wrldsimplmod$vulnerable)
         ) %>%
@@ -280,7 +366,7 @@ shinyServer(function(input, output) {
       bins_emissions <-
         colorBin(
           "Reds",
-          wrldsimplmod$sum,
+          secondmod$sum,
           9,
           pretty = FALSE,
           na.color = "#DFDFDF"
@@ -288,7 +374,7 @@ shinyServer(function(input, output) {
       
       # Build map using CARTO DB Positron provider tiles. View middle of earth.
       
-      leaflet(wrldsimplmod, width = "100%") %>%
+      leaflet(secondmod, width = "100%") %>%
         addProviderTiles(providers$CartoDB.Positron) %>%
         setView(lng = 0,
                 lat = 30,
@@ -301,12 +387,12 @@ shinyServer(function(input, output) {
           smoothFactor = 0.2,
           fillOpacity = 1,
           popup = paste(
-            wrldsimplmod$Country,
-            "Country <br>",
+            secondmod$NAME,
+            "<br>",
             "Emissions:",
-            emissions$sum
+            secondmod$sum
           ),
-          color = ~ bins_emissions(wrldsimplmod$sum)
+          color = ~ bins_emissions(secondmod$sum)
         ) %>%
         
         # The map legend. 
@@ -314,7 +400,7 @@ shinyServer(function(input, output) {
         addLegend(
           "bottomright",
           pal = bins_emissions,
-          values = wrldsimplmod$sum,
+          values = secondmod$sum,
           title = "Total Emissions",
           opacity = 1,
           labFormat = labelFormat(digits = 0)

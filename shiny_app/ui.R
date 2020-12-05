@@ -79,7 +79,9 @@ shinyUI(
                   fluidRow(column(
                     4,
                     h3("Countries around the world will be impacted differently by the climate crisis."),
-                    p("Click on the countries to the right for their projected climate risk."
+                    p("Click on the countries to the right for their projected climate risk.
+                      Note: In the data, the true value for Somalia's climate risk is 100.000. 
+                      As an extreme outlier, this number was changed here for the purposes of the visual."
                     ),
                     
                     # Plot table.
@@ -96,7 +98,9 @@ shinyUI(
                   fluidRow(column(
                     4,
                     h3("But these countries are contributing to the climate crisis at very different rates."),
-                    p("Click to the right for countries' CO2 emissions between 1751 and 2014."
+                    p("Click to the right for countries' CO2 emissions between 1751 and 2014.
+                      Note: In the data, the true value for the United States's emissions is 102,510,260. 
+                      As an extreme outlier, this number was changed here for the purposes of the visual."
                     ),
                     
                     # Plot table.
