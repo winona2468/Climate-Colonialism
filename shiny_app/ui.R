@@ -9,6 +9,7 @@ library(readxl)
 library(leaflet)
 library(maptools)
 library(DT)
+library(gt)
 
 #### SETTING UP THE PAGE ####
 
@@ -21,16 +22,59 @@ shinyUI(
                tabPanel(
                    "The Challenge",
                    p(),
-                   h4("The empire of the climate is the first, the most powerful of all empires —Montesquieu"),
+                   h4('"The empire of the climate is the first, the most powerful of all empires" —Montesquieu'),
                    h2(" "),
                    
                mainPanel(
-                     plotOutput("countriesPlot"),
+                     plotOutput("introPlot"),
                      h4("Why is this the case?")
                    )    
                ),
 
 #### SECOND PAGE ####
+
+              tabPanel(
+                "Correlations",
+                h2("Can a country's colonial history predict their climate risk?"),
+                
+                fluidPage(
+                  fluidRow(
+                    column(
+                    4,
+                    h3("Let's start by defining what colonial histories we're including."),
+                    h4("The ICOW Colonial History data set defines independence as when countries have control over their own foreign policy, 
+                         and when they resemble the form of the modern state. 
+                         It categorizes countries in the Correlates of War interstate system as achieving independence in four primary ways:
+                         Formation (i.e. it was never colonized), Decolonization (it was once ruled by a foreign power), Secession (it was once part of another), and Partition (it was partitioned out of another state, which did not survive).
+                         I have combined this data with climate vulnerability data for countries available in David Wheeler's Vulnerability to Climate Change data.
+                         Learn some more about these countries to the right."),
+                    h4("Note that 'Date of No Direct Colonial Control' refers to the date of independence marked in the COW Territorial Change data set. 
+                            Unlike the 'Formal Date of Independence' from the ICOW data set, it refers not only to when a state has been recognized within an international system, 
+                            but also when the colonial power no longer has direct control over the territory. Also note that the organizational 
+                             tool of the modern nation-state leaves many out (arguably a colonial project in and of itself), one example being various Indigenous peoples in North America.")
+                    
+                          ),
+                  
+                  column(8,
+                         dataTableOutput('fitmodTable')
+                         )
+                     ),
+                  
+                  h3("So which model works best?"),
+                  
+                  mainPanel(
+                           h4("Our first option for defining countries as once-colonized is to take all countries marked under 'Decolonization' inside this data set. 
+                              Place more text here"),
+                           tableOutput("model1Plot"),
+                           tableOutput("model2Plot"),
+                           tableOutput("model3Plot"),
+                           plotOutput("posteriorPlot"),
+                      ),
+                    
+                 )
+              ),
+
+#### THIRD PAGE ####
 
                tabPanel(
                  "History of Empire", 
@@ -53,7 +97,7 @@ shinyUI(
                        selectInput("selected_characteristic", h3("Characteristics"),
                                    choices = list("Years Colonized",
                                                   "Colonization Type",
-                                                  "Different Environmental Risks")),
+                                                  "Different Environmental Risks"))
                      ),
                      
                     # Right side plot. 
@@ -61,12 +105,13 @@ shinyUI(
                       mainPanel(
                          plotOutput("colonialPlot")
                       )
+                    
                      )
                    
                    )
                  ),
 
-#### THIRD PAGE ####
+#### FOURTH PAGE ####
 
                tabPanel(
                  "Emissions vs. Effects", 
@@ -78,7 +123,7 @@ shinyUI(
                   
                   fluidRow(column(
                     4,
-                    h3("Countries around the world will be impacted differently by the climate crisis."),
+                    h3("Countries around the world are being impacted differently by the climate crisis."),
                     p("Click on the countries to the right for their projected climate risk.
                       Note: In the data, the true value for Somalia's climate risk is 100.000. 
                       As an extreme outlier, this number was changed here for the purposes of the visual."
@@ -118,25 +163,6 @@ shinyUI(
 
                 ),
               
-#### FOURTH PAGE ####
-
-                tabPanel(
-                  "Model",
-                  h3("Is there a predictive relationship between a country's CO2 emissions and their climate risk?"),
-                  h4("First, I have found the sum of CO2 emissions between 1751 and 2014 for various countries. 
-                     Then, I ran climate risk on the sum of these emissions.
-                     The graph between these two variables does not produce a clear regression line, 
-                     though the general trend seems to be that countries with few emissions also have high climate risk."),
-                  
-                  mainPanel(
-                    plotOutput("emissionsPlot"),
-                    h4("To put together my model, I also controlled for three variables: income per capita, area, and governance quality. 
-                     This data was included inside the climate risk dataset."),
-                    tableOutput("modelPlot"),
-                    h4("Governance is the only variable which seems to have a substantive effect on climate risk.")
-                  ) 
-                ),
-
 
 #### FIFTH PAGE ####
 

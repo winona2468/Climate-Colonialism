@@ -19,14 +19,6 @@ https://www.cgdev.org/publication/dataset-vulnerability-climate-change
 4) C02 Emissions Per Country
 https://github.com/datasets/co2-fossil-by-nation
 
-Planning out my sitemap:
-
-1) The Challenge
-2) History of Empire
-3) Emissions vs. Effects
-4) Model
-5) About
-
 Below are resources that were helpful to reference as I made this project:
 
 https://shiny.rstudio.com/reference/shiny/1.5.0/
@@ -36,6 +28,10 @@ https://rdrr.io/cran/maptools/man/wrld_simpl.html
 https://www.davidkane.info/files/final_projects.html
 https://github.com/wyatthurt/transboundary-water-conflict/tree/master/shiny_app
 https://www.r-graph-gallery.com/
+https://benalexkeen.com/creating-a-timeline-graphic-using-r-and-ggplot2/
+
+Useful content sources:
+https://www.opendemocracy.net/en/opendemocracyuk/to-fix-climate-crisis-we-must-acknowledge-our-imperial-past/
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -57,22 +53,29 @@ library(tidymodels)
 library(rstanarm)
 library(gt)
 library(broom.mixed)
+library(gganimate)
+library(gtsummary)
 
 ```
 
 ```{r Loading Data}
 
 colonialism <- read_xls("shiny_app/raw_data/colonialism.xls") %>%
-  clean_names() 
+  clean_names() %>%
+  rename(colonizer = main_colonial_motherland_source_ziltener_k_ynzler,
+         onset = onset_of_colonialism_source_ziltener_k_ynzler_2008,
+         end = end_of_colonialism_source_ziltener_k_ynzler_2008) 
 
 climaterisk <- read_xls("shiny_app/raw_data/vulnerability.xls", skip = 2) %>%
   clean_names() %>%
-  rename(vulnerable = climate_vulnerability_cv_cdi_adj_for_income_regulation) %>%
-  rename(governance = kkm_regulatory_quality_score_2008) %>%
-  rename(income = income_per_capita_us_ppp_2008) %>%
-  rename(area = area_sq_km) %>%
+  rename(vulnerable = climate_vulnerability_cv_cdi_adj_for_income_regulation,
+         governance = kkm_regulatory_quality_score_2008, 
+         income = income_per_capita_us_ppp_2008, 
+         area = area_sq_km,
+         extreme_weather = climate_vulnerability_wcv_wcdi_adj_for_income_regulation,
+         sea_level_rise = climate_vulnerability_scv_scdi_adj_for_income_regulation,
+         agr_prod_loss = climate_vulnerability_acv_acdi_adj_for_income_regulation) %>%
   mutate(country = str_to_title(country)) %>%
-  select(country, vulnerable, income, governance, area, world_sub_region) %>%
   mutate(country = recode(country, 'Korea, Rep.' = 'Korea, Republic of',
                           "Korea, Dem. Rep." = "Korea, Democratic People's Republic of",
                           'Taiwan (China)' = 'Taiwan',
@@ -130,8 +133,8 @@ climaterisk <- read_xls("shiny_app/raw_data/vulnerability.xls", skip = 2) %>%
 # Mapping these data sets (and doing the corresponding recoding work) requires navigating a lot of complex history that I'm having difficulty summarizing into one number. For instance, in the countries data, we have Yemen listed as being decolonized in 1990, but Yemen People’s Republic decolonized in 1967. In the climate data, there is one one 'Yemen Rep.' Which name maps on to which? I ended up choosing to rename Yemen Rep. as Yemen, both to match the later colonization date and also to match wrldsimplmod.
 
 countries <- read_xls("shiny_app/raw_data/countries_files/icowcol.xls") %>%
-  mutate(date = str_sub(Indep, 1, 4)) %>%
-  mutate(twenty = ifelse(date >= 1900, "Colonized", "Independent")) %>%
+  mutate(Indep = str_sub(Indep, 1, 4)) %>%
+  mutate(IndepTC = str_sub(IndepTC, 1, 4)) %>%
   mutate(Name = recode(Name, 'United States of America' = 'United States',
                        'Tunisia (postcolonial)' = 'Tunisia',
                        'St. Kitts and Nevis' = 'Saint Kitts and Nevis',
@@ -144,11 +147,53 @@ countries <- read_xls("shiny_app/raw_data/countries_files/icowcol.xls") %>%
                        "Laos" = "Lao People's Democratic Republic",
                        'Egypt (poat-colonial)' = 'Egypt',
                        'South Korea' = 'Korea, Republic of',
-                       "Korea, Dem. Rep." = "Korea, Democratic People's Republic of",
+                       "North Korea" = "Korea, Democratic People's Republic of",
                        'Moldova' = 'Republic of Moldova',
                        'Serbia / Yugoslavia' = 'Serbia',
                        'Tanzania' = 'United Republic of Tanzania',
-                       'Vietnam' = 'Viet Nam'))
+                       'Vietnam' = 'Viet Nam',
+                       'Sardinia / Italy' = 'Italy', 
+                       "St. Lucia" = "Saint Lucia",
+                       'Morocco (postcolonial)' = 'Morocco',
+                       'Libya' = 'Libyan Arab Jamahiriya',
+                       'Estonia (post-Soviet)' = 'Estonia',
+                       'Latvia (post-Soviet)' = 'Latvia',
+                       'Lithuania (post-Soviet)' = 'Lithuania',
+                       'Macedonia' = 'The former Yugoslav Republic of Macedonia',
+                       'Myanmar' = 'Burma',
+                       'Syria (post-UAR)' = 'Syrian Arab Republic',
+                       'East Timor' = 'Timor-Leste')) %>%
+  mutate(From = replace_na(From, "Not Specified")) %>%
+  mutate(From = recode(From, "200" = "United Kingdom",
+                       "2" = "United States",
+                       "220" = "France",
+                       "41" = "Haiti",
+                       "230" = "Spain",
+                       "89" = "Not Specified",
+                       "100" = "Colombia",
+                       "210" = "Netherlands",
+                       "235" = "Portual",
+                       "-9" = "Not Specified",
+                       "255" = "Germany",
+                       "300" = "Austria-Hungary",
+                       "365" = "Russia",
+                       "315" = "Czechoslovakia",
+                       "345" = "Yugoslavia",
+                       "640" = "Turkey",
+                       "380" = "Sweden", 
+                       "390" = "Denmark",
+                       "432" = "Mali",
+                       "590" = "Mauritius",
+                       "698" = "Oman",
+                       "710" = "China",
+                       "820" = "Malaysia",
+                       "850" = "Indonesia",
+                       "900" = "Australia",
+                       "920" = "New Zealand",
+                       "730" = "Korea",
+                       "678" = "Yemen Arab Republic",
+                       "651" = "Egypt",
+                       "640" = "Turkey"))
 
 emissions <- read_csv("shiny_app/raw_data/emissions.csv", 
                       col_types = cols(
@@ -191,50 +236,241 @@ emissions <- read_csv("shiny_app/raw_data/emissions.csv",
 
 # BIG IMPORTANT NOTE AGAIN: I replaced the U.S. total emissions of 102510260, a dramatic outlier, to be 60,000,000, closer to the second largest # of 47649834 (China). 
 
-# The below joins the colonialism data with climate risk data. 
+# The below joins the colonialism data with climate risk data!
 
 fit_mod <- inner_join(countries, climaterisk, by = c("Name" = "country")) %>%
- group_by(twenty) %>%
- mutate(avg_risk = mean(vulnerable)) 
+  select(-COWsys,
+         -GWsys,
+         -Notes) 
+
+ 
+```
+
+```{r Defining Colonized}
+
+# What countries count as colonized? This is the first question because the data set could be split many ways... I will run the RMSE of each in my model to determine which is best. This information will go on later Shiny tabs, but I am including it as the first part of this .RMD so my data sets are created and defined!
+
+# First option: all those coded as decolonial countries in the data. This
+# includes countries like the United States, credited as beginning a Western
+# history of decolonization starting in the 1770s. This is based on a
+# generalized public history: https://en.wikipedia.org/wiki/Decolonization
+
+all_decolonized <- fit_mod %>%
+ mutate(status = ifelse(Type == 2, "Yes", "No")) %>%
+ select(Name, Indep, Type, climate_drivers_cdi, vulnerable, income, governance, area, world_region, world_sub_region, status)
+
+# Second option: Revising the data set with historical particularities.
+# Including all countries marked by secession or partition, like Guatemala and
+# North/South Korea. Many of these countries indeed also have an imperial
+# history, though not all in the same or similar ways. Also, removing the U.S.
+# because of its later emergence as an imperial power, and Canada for
+# participating in a related project. None of the other countries on the list
+# are comparable to their wealth and power (especially of the U.S.) in recent
+# centuries.
+
+decolonial_revised <- fit_mod %>%
+  mutate(status = ifelse(Type %in% c(2, 3, 4), "Yes", "No")) %>%
+  filter(Name != "United States") %>%
+  filter(Name != "Canada")
+
+# Third option: Revised data set above, but also adding the condition of
+# countries that were decolonized after 1850, when industrial-era warming
+# accelerated. I hypothesize this may better capture the predictive effect of
+# colonization on climate, since colonialism is ongoing in a period of
+# increasing climate change. https://www.nature.com/articles/nature19082
+
+nineteenth_century <- decolonial_revised %>%
+  filter(Indep >= 1850)
+
 
 ```
 
-```{r Tab 1 Plot}
+```{r Tab 1 The Challenge}
 
-# Count(twenty) yields 131 colonized and 45 independent countries.
+# PLOTTING AVERAGE CLIMATE RISK BY COLONIAL STATUS
 
-bar_graph <- fit_mod %>%
- select(twenty, avg_risk) %>%
+status_plot <- all_decolonized %>%
+ group_by(status) %>%
+ mutate(avg_risk = mean(vulnerable)) %>% 
+  
+# Above I am calculating a very generalized average climate risk for countries marked as colonized vs. not. 
+  
+ select(Name, status, world_region, avg_risk) %>%
  slice(1) %>%
- ggplot(mapping = aes(x = twenty, y = avg_risk)) + 
- geom_col(fill = "darkgreen") +
- labs(title = "Climate Risk Today for Countries Colonized vs. Independent", 
-      subtitle = "At The Turn of the 20th Century", 
-      x = "Countries' Colonial Status in 1900",
-      y = "Average Climate Vulnerability Today",
-      caption = "The average climate risk for colonized countries is 4.58, 
-      and the average for independent countries is 1.52.") +
- theme_classic()
+ ggplot(mapping = aes(x = status, y = avg_risk)) + 
+ geom_col(fill = "darkseagreen") +
+ labs(title = "Climate Risk for Independent vs. Colonized Countries", 
+      x = "Colonial Status",
+      y = "Avg. Climate Vulnerability",
+      subtitle = "As of 2011",
+      caption = "The average climate risk for independent countries is 1.53, 
+      and the average for colonized countries is 4.36.") +
+ theme_classic() 
 
-bar_graph
+status_plot
+
+# BOXPLOT
+
+box_plot <- all_decolonized %>%
+ group_by(status) %>%
+  
+# Above I am calculating a very generalized average climate risk for countries marked as colonized vs. not. 
+
+ ggplot(mapping = aes(x = status, y = vulnerable)) + 
+ geom_boxplot(fill = "darkseagreen") +
+ labs(title = "Climate Risk for Independent vs. Colonized Countries", 
+      x = "Colonial Status",
+      y = "Avg. Climate Vulnerability",
+      caption = "The average climate risk for independent countries is 1.53, 
+      and the average for colonized countries is 4.36.") +
+ theme_classic() 
+
+box_plot
+
+# PLOTTING BY WORLD REGION
+
+world_region_plot <- all_decolonized %>%
+ group_by(world_region) %>%
+ mutate(avg_risk = mean(vulnerable)) %>% 
+  
+# Above I am calculating averages by continent instead of by colonial status.
+  
+ select(Name, status, world_region, avg_risk) %>%
+ slice(1) %>%
+ ggplot(mapping = aes(x = world_region, y = avg_risk)) + 
+ geom_col(fill = "orange") +
+ labs(title = "Climate Risk Across Six Continents", 
+      x = "Continents",
+      y = "Average Climate Vulnerability") +
+ theme_classic() 
+
+world_region_plot
+
 
 ```
 
-``` {r Tab 2 Plots}
+```{r Tab 2 Model}
 
-# PLOT 1: COLONIALISM & INCOME
+# Model 1: Is there a predictive relationship between colonialism and climate risk today?
+
+model_1 <- stan_glm(formula = vulnerable ~ status,
+                data = all_decolonized, 
+                refresh = 0, 
+                seed = 8)
+
+# Results: Estimate   SD
+# Intercept	1.563682	0.797341		
+# statusYes	2.815612	1.004868	
+
+model_2 <- stan_glm(formula = vulnerable ~ status,
+                data = decolonial_revised, 
+                refresh = 0, 
+                seed = 8)
+
+# (Intercept)	2.097084	1.317358		
+# statusYes	1.463461	1.380297	
+
+
+model_3 <- stan_glm(formula = vulnerable ~ status,
+                data = nineteenth_century, 
+                refresh = 0, 
+                seed = 8) 
+
+# (Intercept)	2.589422	2.533934		
+# statusYes	 1.455264	 2.646424
+
+# Choosing Model 1 because it has the lowest SD. L
+
+# Graphing it below.
+
+pp <- model_1 %>%
+  as_tibble() %>%
+  rename(mu = `(Intercept)`, 
+         status = "statusYes") %>%
+  ggplot(aes(x = mu)) +
+    geom_histogram(aes(y = after_stat(count/sum(count))), 
+                   bins = 100) +
+    labs(title = "Posterior Probability Distribution",
+         subtitle = "Average climate vulnerability among countries in 2011",
+         x = "Colonial Status",
+         y = "Climte Vulnerability") +
+    theme_classic()
+
+# Model 2: Adding the variable of world region is interesting...
+
+model_world <- stan_glm(formula = vulnerable ~ status + world_sub_region,
+                data = all_decolonized, 
+                refresh = 0, 
+                iter = 2500, 
+                
+                # Without the above line, I get an error message that my Bulk
+                # ESS (effective sample size) may be too low. The suggested
+                # solution was found here:
+                # https://mc-stan.org/misc/warnings.html#bulk-ess
+                
+                seed = 8) %>%
+  tidy()
+
+print(model_world, digits = 4)
+
+saveRDS(model_world, file = "shiny_app/model_world.rds")
+
+# Model 3: Is there a predictive relationship between CO2 emissions and climate risk?
+
+# Trying to produce total emissions for each country between 1751 and 2014. 
+
+model_emissions <- inner_join(emissions, climaterisk, by = c("Country" = "country")) 
+ 
+model_emissions_plot <- model_emissions %>%
+  
+  # Without this transformation in the next line, I always get the error of "NaNs"! Online I'm finding that no negative numbers are allowed in the log transformation... I'm also assuming 0 is not allowed since it's a log transformation.
+  
+ mutate(vulnerable = ifelse(vulnerable %in% c(0.000, -0.013, -0.16, -0.237, -0.035, -0.440, -0.016), 0.001, vulnerable)) %>%
+ ggplot(aes(x = sum, y = vulnerable)) +
+  geom_point(na.rm = TRUE) +
+  scale_x_log10() + 
+  
+  # This gives me not 1 x 10^7 but log 1 x 10^7.
+  
+  scale_y_log10()
+
+model_emissions_plot
+
+model_emissions_stan <- stan_glm(formula = vulnerable ~ sum,
+                                  data = model_emissions, 
+                                  refresh = 0, 
+                                  seed = 8)
+
+print(model_emissions_stan, digits = 4)
+
+saveRDS(model_emissions_stan, file = "shiny_app/model_emissions_stan.rds")
+
+# There is no substantive predictive effects here!
+
+
+```
+
+* Mathemtical representation for the first model. I am considering risk as a function of colonial status. How much does colonialism affect risk?
+
+$$ reg_{risk} = \beta_0 + \beta_1x_{status, i} + \epsilon $$
+
+``` {r Tab 3 Effects of Empire Plots}
+
+# PLOT 1: ONSET AND END OF COLONIALISM
 
 #graph onset and end of colonialism for different countries
 #graph the 4 variables change over that period
 #graph france vs. uk whether they have different effects on climate risk
 
 
-#countries on left, geomline line segments on y from onset/end, color coded by motherland
+# countries on left, geomline line segments on y from onset/end, color coded by motherland
 
-#renacohen.shinyapps.io/afta/
- # https://benalexkeen.com/creating-a-timeline-graphic-using-r-and-ggplot2/
+onset_end_plot <- colonialism %>%
+  ggplot(aes(y = country_name, x = , color = colonizer)) +
+  geom_line()
 
-#look at rena's shiny app for modeling results
+
+# PLOT: COLONIALISM & INCOME
 
 # PLOT 2: NUMBER OF YEARS COLONIZED (African and Asian Countries)
 
@@ -277,7 +513,8 @@ colonize <- q3 %>%
     
 
 ```
-```{r Tab 3 Leaflet}
+
+```{r Tab 4 Leaflet}
 
 # Modifying Polygons: world countries from the maptools package.
 
@@ -304,58 +541,6 @@ secondmod@data <-
 saveRDS(secondmod, "shiny_app/joined2.rds")
 
 ```
-
-```{r Tab 4 Model}
-
-# Is there a predictive relationship between CO2 emissions and climate risk?
-
-# Trying to produce total emissions for each country between 1751 and 2014. 
-
-model <- inner_join(emissions, climaterisk, by = c("Country" = "country"))
-
-model %>%
-  ggplot(aes(x = sum, y = vulnerable)) +
-  geom_smooth(method = "lm") +
-  scale_x_log10() +
-  scale_y_log10()
-
-# possibly do checkboxes to give people choices
-#show geom point not smooth to show variability
-#specify these r countries that have been colonized (look back at 'model' what is missing). i see little correlation because...
-
-# not 1 x 10^7 but log 1 x 10^7
-
-# I am also controlling for three variables from each country here: income per capita, area, and governance quality. This data was included inside the climate risk dataset.
-
-reg <- stan_glm(formula = vulnerable ~ sum + income + area + governance,
-                data = model, 
-                refresh = 0, 
-                seed = 8) %>%
-  tidy()
-
-# create model with 0 and 1 as colonized vs indepdent. run that on climate risk - start here! if i add twenty column it will convert for me!!!!!!!!!!
-
-# include model tibble via renderDataTable in shinyapp (see wyatt's first page!)
-
-
-```
-
-* Write the math for this model. I am considering risk as a function of emissions. How much should/do emissions affect risk?
-
-$$ reg_{risk} = \beta_0 + \beta_1x_{emissions, i} + \epsilon $$
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
