@@ -123,7 +123,8 @@ tabPanel(
                      that would create evictions and food scarcity across Uganda, Mozambique, and Tanzania, as well as the fact that Africa houses the world's largest solar power plant (in Morocco), 
                      yet also has the least access to solar power. Below, let's compare average climate risk across regions."),
                   plotOutput("worldregionPlot"),
-                  h4("As Montesquieu said, 'The empire of the climate is the first, the most powerful of all empires.'")
+                  h4("Imagine climate colonialism today, and think of how mining devastates local land (Mexico), mercury contaminates waters (Bolivia), forests disappear (India, Burma), and all forms of life suffer. 
+                      As Montesquieu said, 'The empire of the climate is the first, the most powerful of all empires.'")
                   
                   )
                )
