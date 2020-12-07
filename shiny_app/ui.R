@@ -166,7 +166,7 @@ tabPanel(
                       h3("So which model works best?"),
                       h4("Model 1: Our first option for defining countries as once-colonized is to take all countries marked under 'Decolonization' inside the ICOW data set. This gives a more clean-cut division of states, though 
                       one concern is that, under this definition, even powerful countries like the United States (once colonized by the United Kingdom) are included."),
-                      h4("Model 2: Our second option is to manually revise the countries listed above with historical particularities related to imperialism. First, I include all countries marked in the data by secession or partition, like Guatemala and North/South Korea.
+                      h4("Model 2: Our second option is to manually revise the countries listed above with historical particularities related to imperialism. First, I include all countries marked in the data by secession or partition, like Guatemala and Bangladesh.
                       Many of these countries indeed have an imperial history too, though in different ways. Further, I remove the U.S. because of its later emergence as an imperial power, and Canada for profitting from imperialism too."),
                       h4("Model 3: Our third option adds the condition of decolonization after 1850, a period when industrial-era warming accelerated. 
                       I hypothesize this may better capture the predictive effect of colonization on climate risk, since colonialism is ongoing in a period of increasing climate change.")
@@ -260,7 +260,7 @@ tabPanel(
                    To define climate colonialism only by an earlier period is insufficient, and so this project only represents a historical starting point for what is a highly urgent contemporary crisis.
                    Third, if you find any errors or would like to share any constructive advice, please reach out! You can find my email below at my Github repository for this project."),
                    h5(a("Project Github", href = "https://github.com/winona2468/Gov-50-Final-Project")),
-                   h4("Thank you for reading!")
+                   h4("Thank you for reading! And thank you my wonderful Gov 50 teachers, Wyatt Hurt and Tyler Simko.")
                  )
                )
            )

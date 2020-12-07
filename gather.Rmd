@@ -30,7 +30,7 @@ https://github.com/wyatthurt/transboundary-water-conflict/tree/master/shiny_app
 https://www.r-graph-gallery.com/
 https://benalexkeen.com/creating-a-timeline-graphic-using-r-and-ggplot2/
 
-Useful content sources:
+Sources cited:
 https://www.opendemocracy.net/en/opendemocracyuk/to-fix-climate-crisis-we-must-acknowledge-our-imperial-past/
 https://psmag.com/social-justice/how-the-gnd-can-avoid-climate-colonialism
 
