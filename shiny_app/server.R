@@ -232,10 +232,7 @@ decolonial_revised <- fit_mod %>%
 nineteenth_century <- decolonial_revised %>%
   filter(Indep >= 1850)
 
-model_1 <- stan_glm(formula = vulnerable ~ status,
-                    data = all_decolonized, 
-                    refresh = 0, 
-                    seed = 8)
+model_1 <- readRDS("model_1.rds")
 
 model_2 <- readRDS("model_2.rds")
 
@@ -243,18 +240,208 @@ model_3 <- readRDS("model_3.rds")
 
 model_world <- readRDS("model_world.rds")
 
+model_gov <- readRDS("model_gov.rds")
+
 model_emissions_stan <- readRDS("model_emissions_stan.rds")
 
 wrldsimplmod <- readRDS("joined.rds")
 
 secondmod <- readRDS("joined2.rds")
 
+
+
+
+
+
 #### SETTING UP SHINY SERVER ####
 
 shinyServer(function(input, output) {
+
   
 #### FIRST PAGE ####
   
+  # Is there a predictive relationship between CO2 emissions and climate risk?
+  
+  # Trying to produce total emissions for each country between 1751 and 2014. 
+  
+  output$model_emissions_stan <- renderTable({
+    
+    model_emissions_stan <- model_emissions_stan %>%
+      tidy()
+    
+    model_emissions_stan
+    
+  })
+  
+  output$model_emissions_plot <- renderPlot({
+    
+    model_emissions_plot <- model_emissions %>%
+      
+      # Without this transformation in the next line, I always get the error of "NaNs"! Online I'm finding that no negative numbers are allowed in the log transformation... I'm also assuming 0 is not allowed since it's a log transformation.
+      
+      mutate(vulnerable = ifelse(vulnerable %in% c(0.000, -0.013, -0.16, -0.237, -0.035, -0.440, -0.016), 0.001, vulnerable)) %>%
+      ggplot(aes(x = sum, y = vulnerable)) +
+      geom_point(na.rm = TRUE, color = "red") +
+      scale_x_log10() + 
+      
+      # This gives me not 1 x 10^7 but log 1 x 10^7.
+      
+      scale_y_log10() +
+      labs(title = "Countries' Total Emissions vs. Climate Vulnerability",
+           y = "Climate Vulnerability (log)",
+           x = "Total Emissions 1751-2014 (log)")
+    
+    model_emissions_plot
+    
+  })
+  
+   
+   
+   
+   
+#### SECOND PAGE ####
+   
+   
+   # PART ONE: EMISSION MAP
+   
+   # Table with names of countries, sorted by climate risk.
+   
+   output$emissions <- renderDataTable({
+     datatable(
+       emissions %>%
+         rename("Total Emissions" = "sum"),
+       options = list(pageLength = 10)
+     )
+   })
+   
+   # Leaflet map, with help referencing Wyatt Hurt's project on Transboundary Water
+   # Conflict.
+   
+   output$map_2 <- renderLeaflet({
+     
+     # Set color palette, using 9 bins.
+     
+     bins_emissions <-
+       colorBin(
+         "Reds",
+         secondmod$sum,
+         9,
+         pretty = FALSE,
+         na.color = "#DFDFDF"
+       )
+     
+     # Build map using CARTO DB Positron provider tiles. View middle of earth.
+     
+     leaflet(secondmod, width = "100%") %>%
+       addProviderTiles(providers$CartoDB.Positron) %>%
+       setView(lng = 0,
+               lat = 30,
+               zoom = 1.5) %>%
+       
+       # Adding polygons.
+       
+       addPolygons(
+         stroke = FALSE,
+         smoothFactor = 0.2,
+         fillOpacity = 1,
+         popup = paste(
+           secondmod$NAME,
+           "<br>",
+           "Emissions:",
+           secondmod$sum
+         ),
+         color = ~ bins_emissions(secondmod$sum)
+       ) %>%
+       
+       # The map legend. 
+       
+       addLegend(
+         "bottomright",
+         pal = bins_emissions,
+         values = secondmod$sum,
+         title = "Total Emissions",
+         opacity = 1,
+         labFormat = labelFormat(digits = 0)
+       )
+   })
+   
+   # PART TWO: CLIMATE RISK MAP
+   
+   # Table with names of countries, sorted by climate risk.
+   
+   output$risk <- renderDataTable({
+     datatable(
+       
+       selection <- climaterisk %>%
+         select(country, income, vulnerable) %>%
+         rename("Income Per Capita" = "income",
+                "Climate Vulnerability" = "vulnerable",
+                "Country" = "country"),
+       options = list(pageLength = 10)
+     )
+   })
+   
+   # Leaflet.
+   
+   output$map <- renderLeaflet({
+     
+     # Set color palette, using 9 bins.
+     
+     bins_climaterisk <-
+       colorBin(
+         "Blues",
+         wrldsimplmod$vulnerable,
+         9,
+         
+         # This package only allows for 9 bins! More bins could perhaps have created a more interesting color scheme.
+         
+         pretty = FALSE,
+         na.color = "#DFDFDF"
+       )
+     
+     # Build map using CARTO DB Positron provider tiles. View middle of earth.
+     
+     leaflet(wrldsimplmod, width = "100%") %>%
+       addProviderTiles(providers$CartoDB.Positron) %>%
+       setView(lng = 0,
+               lat = 30,
+               zoom = 1.5) %>%
+       
+       # Adding polygons.
+       
+       addPolygons(
+         stroke = FALSE,
+         smoothFactor = 0.2,
+         fillOpacity = 1,
+         popup = paste(
+           wrldsimplmod$NAME,
+           "<br>",
+           "Climate Risk:",
+           wrldsimplmod$vulnerable
+         ),
+         color = ~ bins_climaterisk(wrldsimplmod$vulnerable)
+       ) %>%
+       
+       # The map legend.
+       
+       addLegend(
+         "bottomright",
+         pal = bins_climaterisk,
+         values = wrldsimplmod$vulnerable,
+         title = "Climate Risk",
+         opacity = 1,
+         labFormat = labelFormat(digits = 0)
+       )
+   }) 
+   
+   
+   
+   
+#### THIRD PAGE ####  
+   
+   
+   # Plot originally from first page.
+   
    output$introPlot <- renderPlot({
      
      status_plot <- all_decolonized %>%
@@ -267,20 +454,66 @@ shinyServer(function(input, output) {
        slice(1) %>%
        ggplot(mapping = aes(x = status, y = avg_risk)) + 
        geom_col(fill = "darkseagreen") +
-       labs(title = "Climate Risk for Independent vs. Colonized Countries", 
-            x = "Colonial Status",
-            y = "Avg. Climate Vulnerability",
-            subtitle = "As of 2011",
-            caption = "The average climate risk for independent countries is 1.53, 
-      and the average for colonized countries is 4.36.") +
+       labs(title = "Climate Risk for Independent vs. Once-Colonized Countries", 
+            x = "History of Colonization?",
+            y = "Average Climate Vulnerability (2011)",
+            caption = "This graph shows that the average climate risk for independent countries is 1.53, 
+      and the average for once-colonized countries is 4.36.") +
        theme_classic()
      
      status_plot
      
    })
+
+   output$introboxPlot <- renderPlot({
+     
+     box_plot <- all_decolonized %>%
+       group_by(status) %>%
+       
+       # Above I am calculating a very generalized average climate risk for countries marked as colonized vs. not. 
+       
+       ggplot(mapping = aes(x = status, y = vulnerable)) + 
+       geom_boxplot(fill = "darkseagreen", outlier.shape = NA) +
+       coord_cartesian(ylim = c(0, 11)) +
+       labs(title = "Climate Risk for Independent vs. Colonized Countries", 
+            subtitle = "Removing outliers",
+            x = "Colonial Status",
+            y = "Avg. Climate Vulnerability") +
+       theme_classic()
+     
+     box_plot
+     
+   })
+   
+   
+   output$worldregionPlot <- renderPlot({
+     
+     # PLOTTING BY WORLD REGION
+     
+     world_region_plot <- all_decolonized %>%
+       group_by(world_region) %>%
+       mutate(avg_risk = mean(vulnerable)) %>% 
+       
+       # Above I am calculating averages by continent instead of by colonial status.
+       
+       select(Name, status, world_region, avg_risk) %>%
+       slice(1) %>%
+       ggplot(mapping = aes(x = reorder(world_region, avg_risk), y = avg_risk)) + 
+       geom_col(fill = "seagreen4") +
+       labs(title = "Climate Risk Across Six Continents", 
+            x = "Continents",
+            y = "Average Climate Vulnerability") +
+       theme_classic() 
+     
+     world_region_plot
+     
+   })
+   
+   
+   
   
   
-#### SECOND PAGE ####
+#### FOURTH PAGE ####
   
    # Creating table of all countries inside fit_mod.
    
@@ -308,263 +541,87 @@ shinyServer(function(input, output) {
    
   # Running my models.
   
-  output$model1Plot <- renderTable({
-    
-    model_1_table <- model_1 %>%
-      tidy()
-    
-    model_1_table
-    
-  })
-  
-  output$model2Plot <- renderTable({
-    
-    model_2_table <- model_2 %>%
-      tidy()
-    
-    model_2_table
-    
-  })
-  
-  output$model3Plot <- renderTable({
-    
-    model_3_table <- model_3 %>%
-      tidy()
-    
-    model_3_table
-    
-  })
-  
-  output$posteriorPlot <- renderPlot({
-    
-    pp <- model_1 %>%
-      as_tibble() %>%
-      rename(mu = `(Intercept)`, 
-             status = "statusYes") %>%
-      ggplot(aes(x = mu)) +
-      geom_histogram(aes(y = after_stat(count/sum(count))), 
-                     bins = 100) +
-      labs(title = "Posterior Probability Distribution",
-           subtitle = "Average climate vulnerability among countries in 2011",
-           x = "Climate Vulnerability",
-           y = "Probability") +
-      theme_classic()
-    
-    pp
-    
-  })
-  
+               output$modelsPlot <- renderTable({
+                 
+                 if (input$selected_model == "Model 1") {
+                   
+                   model_1_table <- model_1 %>%
+                     tidy()
+                   
+                   model_1_table
+                   
+                 }
+                 
+                 
+                 else {
+                   if(input$selected_model == "Model 2") {
+                     
+                     
+                     model_2_table <- model_2 %>%
+                       tidy()
+                     
+                     model_2_table
+                     
+                   }
+                   
+                   else {
+                     
+                     model_3_table <- model_3 %>%
+                       tidy()
+                     
+                     model_3_table
+                     
+                   }
 
-  
-#### THIRD PAGE ####  
-  
-    output$colonialPlot <- renderPlot({
-    
-      if (input$selected_characteristic == "Years Colonized") {
+                 }
+                 
+               })
+   
         
-        #display first line plot
+  # From this I can choose just the first model. 
         
-      q1 <- colonialism %>%
-        select(country_name, colyears) 
-      
-      q2 <- climaterisk %>%
-        subset(country != "Somalia") %>%
-        subset(country != "Burundi")
-      
-      q3 <- inner_join(q1, q2, by = c("country_name" = "country")) 
-      
-      colonize <- q3 %>%
-        ggplot(aes(x = colyears, y = vulnerable, color = world_sub_region)) +
-        geom_point(alpha = 0.7) +
-        geom_smooth(formula = y ~ x, method = "lm", se = FALSE) +
-        labs(title = "Countries by Years Colonized and Vulnerability to Climate Risk",
-             x = "Years Colonized",
-             y = "Vulnerability to Climate Risk",
-             caption = "This graph indicates there is not a significant correlation
-       overall between the years a country has been colonized, 
-       and its current vulnerability to climate risk.") +
-        theme_bw() + 
-        scale_color_discrete("World Region")
-      
-      colonize
-      }
-      
-    
-    else {
-      if(input$selected_characteristic == "Colonization Type") {
+        output$posteriorPlot <- renderPlot({
+          
+          pp <- model_1 %>%
+            as_tibble() %>%
+            rename(mu = `(Intercept)`, 
+                   status = "statusYes") %>%
+            ggplot(aes(x = mu)) +
+            geom_histogram(aes(y = after_stat(count/sum(count))), 
+                           bins = 100, 
+                           fill = "lightpink") +
+            labs(title = "Posterior Probability Distribution",
+                 subtitle = "Average climate vulnerability among colonized countries in 2011",
+                 x = "Climate Vulnerability",
+                 y = "Probability") +
+            theme_classic()
+          
+          pp
+          
+        })
         
-       
-        types <- fit_mod %>%
-          ggplot(aes(x = Type, y = vulnerable)) +
-          geom_col(fill = "orange") +
-          labs(title = "The Effect of Different Types of Colonialism on Climate Risk",
-               y = "Climate Risk",
-               subtitle = "Key: 1 = Formation, 2 = Decolonization, 3 = Secession, 4 = Partition",
-               caption = "This graph shows that decolonialization and occuption by a foreign power 
-           has a significantly greater effect on risk than histories of secession or partition.") 
+    # Adding two new predictors. 
         
-        types
+        output$model_world <- renderTable({
+          
+          model_world <- model_world %>%
+            tidy()
+          
+          model_world
+          
+        })
         
-      }
-      
-      else {
-        
-        types <- fit_mod %>%
-          ggplot(aes(x = Type, y = vulnerable)) +
-          geom_col(fill = "orange") +
-          labs(title = "The Effect of Different Types of Colonialism on Climate Risk",
-               y = "Climate Risk",
-               subtitle = "Key: 1 = Formation, 2 = Decolonization, 3 = Secession, 4 = Partition",
-               caption = "This graph shows that decolonialization and occuption by a foreign power 
-           has a significantly greater effect on risk than histories of secession or partition.") 
-        
-        types
-        
-      }
-      
-      
-    }
-      
-      
-    
-  })
-    
-    
-    
+        output$model_gov <- renderTable({
+          
+          model_gov <- model_gov %>%
+            tidy()
+          
+          model_gov
+          
+        })
 
-#### FOURTH PAGE ####
-    
-# PART ONE: CLIMATE RISK MAP
-    
-    # Table with names of countries, sorted by climate risk.
-    
-    output$risk <- renderDataTable({
-      datatable(
+
         
-        selection <- climaterisk %>%
-          select(country, income, vulnerable) %>%
-          rename("Income Per Capita" = "income",
-                 "Climate Risk" = "vulnerable",
-                 "Country" = "country"),
-        options = list(pageLength = 10)
-      )
-    })
-    
-    # Leaflet map, with help referencing Wyatt Hurt's project on Transboundary Water
-    # Conflict.
-    
-    output$map <- renderLeaflet({
-      
-      # Set color palette, using 9 bins.
-      
-      bins_climaterisk <-
-        colorBin(
-          "Blues",
-          wrldsimplmod$vulnerable,
-          9,
-          
-          # This package only allows for 9 bins! More bins could perhaps have created a more interesting color scheme.
-          
-          pretty = FALSE,
-          na.color = "#DFDFDF"
-        )
-      
-      # Build map using CARTO DB Positron provider tiles. View middle of earth.
-      
-      leaflet(wrldsimplmod, width = "100%") %>%
-        addProviderTiles(providers$CartoDB.Positron) %>%
-        setView(lng = 0,
-                lat = 30,
-                zoom = 1.5) %>%
-        
-        # Adding polygons.
-        
-        addPolygons(
-          stroke = FALSE,
-          smoothFactor = 0.2,
-          fillOpacity = 1,
-          popup = paste(
-            wrldsimplmod$NAME,
-            "<br>",
-            "Climate Risk:",
-            wrldsimplmod$vulnerable
-          ),
-          color = ~ bins_climaterisk(wrldsimplmod$vulnerable)
-        ) %>%
-        
-        # The map legend.
-        
-        addLegend(
-          "bottomright",
-          pal = bins_climaterisk,
-          values = wrldsimplmod$vulnerable,
-          title = "Climate Risk",
-          opacity = 1,
-          labFormat = labelFormat(digits = 0)
-        )
-    }) 
-    
-# PART TWO: EMISSION MAP
-    
-    # Table with names of countries, sorted by climate risk.
-    
-    output$emissions <- renderDataTable({
-      datatable(
-        emissions %>%
-          rename("Total Emissions" = "sum"),
-        options = list(pageLength = 10)
-      )
-    })
-    
-    # Leaflet map
-    
-    output$map_2 <- renderLeaflet({
-      
-      # Set color palette, using 9 bins.
-      
-      bins_emissions <-
-        colorBin(
-          "Reds",
-          secondmod$sum,
-          9,
-          pretty = FALSE,
-          na.color = "#DFDFDF"
-        )
-      
-      # Build map using CARTO DB Positron provider tiles. View middle of earth.
-      
-      leaflet(secondmod, width = "100%") %>%
-        addProviderTiles(providers$CartoDB.Positron) %>%
-        setView(lng = 0,
-                lat = 30,
-                zoom = 1.5) %>%
-        
-        # Adding polygons.
-        
-        addPolygons(
-          stroke = FALSE,
-          smoothFactor = 0.2,
-          fillOpacity = 1,
-          popup = paste(
-            secondmod$NAME,
-            "<br>",
-            "Emissions:",
-            secondmod$sum
-          ),
-          color = ~ bins_emissions(secondmod$sum)
-        ) %>%
-        
-        # The map legend. 
-        
-        addLegend(
-          "bottomright",
-          pal = bins_emissions,
-          values = secondmod$sum,
-          title = "Total Emissions",
-          opacity = 1,
-          labFormat = labelFormat(digits = 0)
-        )
-    })
     
     
     
