@@ -579,6 +579,14 @@ shinyServer(function(input, output) {
    
         
   # From this I can choose just the first model. 
+               
+    # Math equation.
+               
+          output$formula <- renderUI({
+                 withMathJax(helpText('Model 1:  $$risk = \\beta^0 + \\beta^1status + \\epsilon$$'))
+               })
+               
+    # Posterior plot.
         
         output$posteriorPlot <- renderPlot({
           

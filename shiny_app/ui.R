@@ -164,6 +164,7 @@ tabPanel(
                   
                   mainPanel(
                       h3("So which model works best?"),
+                      h4("Below, each model takes on differently filtered data sets."),
                       h4("Model 1: Our first option for defining countries as once-colonized is to take all countries marked under 'Decolonization' inside the ICOW data set. This gives a more clean-cut division of states, though 
                       one concern is that, under this definition, even powerful countries like the United States (once colonized by the United Kingdom) are included."),
                       h4("Model 2: Our second option is to manually revise the countries listed above with historical particularities related to imperialism. First, I include all countries marked in the data by secession or partition, like Guatemala and Bangladesh.
@@ -188,8 +189,14 @@ tabPanel(
                              
                           
                               mainPanel(
-                                       h4("* Alas, Model 1 has the lowest standard deviation! Let's use that one. Below is the posterior distribution. *"),
+                                       h4("* Alas, Model 1 has the lowest standard deviation! Let's use that one. Below is the mathematical equation. *"),
+                                       withMathJax(uiOutput("formula")),
+                                       h4("Our results give an intercept of 1.56 and a coefficient of 2.82 for the status of being colonized. 
+                                       This indicates that for countries that are marked as colonized in the data, climate risk is predicted to increase by 2.82 on the vulnerability scale (from an initial point of 1.56),
+                                       which represents the probability that an individual there will be impacted by extreme weather-related disasters, sea-level rise, or reduced agricultural productivity in a given year. 
+                                       To visualize this further, here is the posterior distribution."),
                                        plotOutput("posteriorPlot")
+                                       
                               ),
                             
                             
@@ -211,7 +218,7 @@ tabPanel(
                     h4("The variable governance refers to countries' 2008 KKM regulatory quality score, which measures countries by their
                        political stability, government effectiveness, regulatory quality, rule of law, and control of corruption, among other characteristics. The higher the score, the better.
                        Interestingly, this result could be interpreted in a number of contradictory, politicized ways. For example, one might say that since better governed countries have lower climate risk, high risk countries are in part to blame for their own misfortune. 
-                       Another might argue that low quality governance is highly correlated with or even caused by imperialism and the conflict and violence it creates. 
+                       Another might argue that low quality governance is highly correlated with imperialism and the conflict and violence it creates. 
                        This underscores the important roles both subjective interpretation and accurate historical, sociological context play, when we are looking at data.")
                   ),
                   

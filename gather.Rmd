@@ -472,7 +472,8 @@ saveRDS(model_gov, file = "shiny_app/model_gov.rds")
 
 * Mathemtical representation for the first model. I am considering risk as a function of colonial status. How much does colonialism affect risk?
 
-$$ reg_{risk} = \beta_0 + \beta_1x_{status, i} + \epsilon $$
+$$ reg_{risk} = \beta_0 + \beta_1x_{status, i} + \epsilon $$ 
+
 ```{r Tab 4 Leaflet}
 
 # Modifying Polygons: world countries from the maptools package.
